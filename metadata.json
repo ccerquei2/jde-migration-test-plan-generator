@@ -1,0 +1,6 @@
+{
+  "name": "JDE Migration Test Plan Generator",
+  "description": "An MVP application that uses Gemini to compare two versions of JD Edwards source code (vanilla vs. custom) and generate a targeted test plan based on the detected differences.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
