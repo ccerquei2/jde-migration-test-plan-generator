@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Part } from "@google/genai";
+import { generateChat } from '../lib/llmClient.js';
 import diff_match_patch from 'diff-match-patch';
 
 export interface FunctionalSpec {
@@ -54,7 +54,7 @@ function createFunctionDiff(vanillaCode: string, customCode: string): string {
     }).filter(Boolean).join('\n');
 }
 
-async function parseAndCorrectJson(text: string, ai: GoogleGenAI): Promise<any> {
+async function parseAndCorrectJson(text: string): Promise<any> {
     const fenceRegex = /^`{3}(json)?\s*\n?(.*?)\n?`{3}$/s;
     let jsonText = text.trim();
     const match = jsonText.match(fenceRegex);
@@ -66,16 +66,14 @@ async function parseAndCorrectJson(text: string, ai: GoogleGenAI): Promise<any> 
     } catch (e) {
         console.warn("Análise JSON inicial falhou. Tentando autocorreção...", { error: e, text: jsonText });
         const prompt = `O seguinte texto deveria ser um JSON, mas está malformado. Por favor, corrija-o e retorne apenas o objeto JSON válido.\n\nJSON Inválido:\n${jsonText}`;
-        const result = await ai.models.generateContent({
+        const result = await generateChat({
             model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                systemInstruction: systemInstructionForJsonFix,
-                temperature: 0,
-                responseMimeType: 'application/json'
-            }
+            prompt,
+            systemPrompt: systemInstructionForJsonFix,
+            temperature: 0,
+            responseMimeType: 'application/json'
         });
-        let correctedJsonText = result.text.trim();
+        let correctedJsonText = result.content.trim();
         const correctedMatch = correctedJsonText.match(fenceRegex);
         if (correctedMatch && correctedMatch[2]) {
             correctedJsonText = correctedMatch[2].trim();
@@ -310,7 +308,6 @@ async function runFunctionalSpecAnalysis(
     module: string,
     onProgress: (message: string) => void
 ): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     onProgress('Analisando especificações funcionais...');
 
     const finalProgramName = programName || 'a ser identificado pelo analista de IA';
@@ -353,29 +350,23 @@ async function runFunctionalSpecAnalysis(
         }, '<!-- As linhas de teste <tr> geradas pela IA devem ser inseridas aqui, seguindo todas as regras descritas. -->', false)}
     `;
     
-    const contentParts: Part[] = [{ text: initialPrompt }];
-    
+    let promptText = initialPrompt;
+
     for (const spec of specs) {
-        contentParts.push({ text: `\n\n--- INÍCIO DO DOCUMENTO: ${spec.fileName} ---\n\n` });
-        contentParts.push({ text: spec.htmlContent });
+        promptText += `\n\n--- INÍCIO DO DOCUMENTO: ${spec.fileName} ---\n\n`;
+        promptText += spec.htmlContent;
         for (const image of spec.images) {
-            contentParts.push({
-                inlineData: {
-                    mimeType: image.mimeType,
-                    data: image.data,
-                }
-            });
+            promptText += `\n[imagem ${image.mimeType} omitida]\n`;
         }
-        contentParts.push({ text: `\n\n--- FIM DO DOCUMENTO: ${spec.fileName} ---\n\n` });
+        promptText += `\n\n--- FIM DO DOCUMENTO: ${spec.fileName} ---\n\n`;
     }
 
-    const response = await ai.models.generateContent({
+    const response = await generateChat({
          model: 'gemini-2.5-flash',
-         contents: { parts: contentParts },
-         config: { systemInstruction: "Sua resposta deve ser um documento HTML completo e válido, baseado estritamente nas informações e metodologia fornecidas. Foque em uma linguagem de negócios clara, use <strong> para negrito e garanta cobertura total dos requisitos." }
+         prompt: promptText,
+         systemPrompt: "Sua resposta deve ser um documento HTML completo e válido, baseado estritamente nas informações e metodologia fornecidas. Foque em uma linguagem de negócios clara, use <strong> para negrito e garanta cobertura total dos requisitos."
     });
-
-    let reportHtml = response.text;
+    let reportHtml = response.content;
     const fenceRegex = /^`{3}(html)?\s*\n?(.*?)\n?`{3}$/s;
     const match = reportHtml.match(fenceRegex);
     if (match && match[2]) {
@@ -393,7 +384,6 @@ async function runMultiStepAnalysis(
     distributionBranch: string, 
     onProgress: (message: string) => void
 ): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const isFromScratch = !vanillaCode.trim();
     
     onProgress('Analisando a estrutura do código...');
@@ -443,27 +433,25 @@ async function runMultiStepAnalysis(
                 ? getComprehensionPrompt(func.name, programName, func.content)
                 : getComprehensionPrompt_FromScratch(func.name, programName, func.content);
 
-            const comprehensionResult = await ai.models.generateContent({
+            const comprehensionResult = await generateChat({
                 model: 'gemini-2.5-flash',
-                contents: comprehensionPrompt,
-                config: { systemInstruction: systemInstructionAntiHallucination, temperature: 0.1 }
+                prompt: comprehensionPrompt,
+                systemPrompt: systemInstructionAntiHallucination,
+                temperature: 0.1
             });
-            const analysisContext = comprehensionResult.text;
+            const analysisContext = comprehensionResult.content;
 
             // Etapa 2: Geração de Casos de Teste
             onProgress(`Gerando testes para a função ${i + 1}/${functionsToAnalyze.length}: ${func.name}`);
             const testCasePrompt = getTestCaseGenerationPrompt(func.name, programName, analysisContext, manufacturingBranch, distributionBranch);
-            const testCaseResponse = await ai.models.generateContent({
+            const testCaseResponse = await generateChat({
                 model: 'gemini-2.5-flash',
-                contents: testCasePrompt,
-                config: { 
-                    responseMimeType: "application/json",
-                    systemInstruction: systemInstructionAntiHallucination,
-                    temperature: 0.2
-                }
+                prompt: testCasePrompt,
+                systemPrompt: systemInstructionAntiHallucination,
+                temperature: 0.2,
+                responseMimeType: "application/json"
             });
-            
-            const parsedJson = await parseAndCorrectJson(testCaseResponse.text, ai);
+            const parsedJson = await parseAndCorrectJson(testCaseResponse.content);
             if (parsedJson && parsedJson.test_scenarios && Array.isArray(parsedJson.test_scenarios)) {
                 allTestScenarios = allTestScenarios.concat(parsedJson.test_scenarios);
             }
@@ -487,12 +475,13 @@ async function runMultiStepAnalysis(
         
         try {
             const transcriptionPrompt = getTranscriptionPrompt(JSON.stringify(batch), i + 1);
-            const response = await ai.models.generateContent({
+            const response = await generateChat({
                 model: 'gemini-2.5-flash',
-                contents: transcriptionPrompt,
-                config: { systemInstruction: systemInstructionAntiHallucination, temperature: 0 }
+                prompt: transcriptionPrompt,
+                systemPrompt: systemInstructionAntiHallucination,
+                temperature: 0
             });
-            allTableRows += response.text.replace(/`{3}(html)?/g, '').trim();
+            allTableRows += response.content.replace(/`{3}(html)?/g, '').trim();
         } catch (error) {
             console.error(`Falha ao transcrever o lote ${i / BATCH_SIZE}:`, error);
         }
@@ -517,7 +506,6 @@ async function runMultiStepAnalysis(
 }
 
 async function runSimpleAnalysis(vanillaCode: string, customCode: string, programName: string, manufacturingBranch: string, distributionBranch: string): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const isFromScratch = !vanillaCode.trim();
 
     let prompt: string;
@@ -573,13 +561,13 @@ async function runSimpleAnalysis(vanillaCode: string, customCode: string, progra
         `;
     }
 
-    const response = await ai.models.generateContent({
-         model: 'gemini-2.5-flash', 
-         contents: prompt,
-         config: { systemInstruction: "Sua resposta deve ser um documento HTML completo e válido, baseado estritamente na metodologia fornecida. Garanta cobertura total das mudanças ou funcionalidades do código." }
+    const response = await generateChat({
+         model: 'gemini-2.5-flash',
+         prompt,
+         systemPrompt: "Sua resposta deve ser um documento HTML completo e válido, baseado estritamente na metodologia fornecida. Garanta cobertura total das mudanças ou funcionalidades do código."
     });
      // Limpa a resposta para garantir que seja apenas HTML
-    let reportHtml = response.text;
+    let reportHtml = response.content;
     const fenceRegex = /^`{3}(html)?\s*\n?(.*?)\n?`{3}$/s;
     const match = reportHtml.match(fenceRegex);
     if (match && match[2]) {

@@ -18,7 +18,7 @@ export const AnalysisInfo: React.FC<AnalysisInfoProps> = ({ isLoading, progress 
                     <p className="text-lg font-semibold text-slate-600">
                       {progress || 'Gerando seu plano de testes...'}
                     </p>
-                    <p className="text-sm text-slate-500">O Gemini está analisando os arquivos. Isso pode levar alguns minutos para documentos ou códigos grandes.</p>
+                    <p className="text-sm text-slate-500">A IA está analisando os arquivos. Isso pode levar alguns minutos para documentos ou códigos grandes.</p>
                 </div>
             </div>
         )

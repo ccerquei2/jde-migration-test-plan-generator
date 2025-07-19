@@ -9,6 +9,10 @@ This contains everything you need to run your app locally.
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set your API keys in [.env.local](.env.local):
+   - `OPENAI_API_KEY` ou `GROQ_API_KEY`
+   - `GEMINI_API_KEY` (opcional)
+   - `LLM_PROVIDER` (`openai`, `groq` ou `gemini`)
+   - `TOP_MODEL_PWD` (opcional para liberar modelos premium)
 3. Run the app:
    `npm run dev`
