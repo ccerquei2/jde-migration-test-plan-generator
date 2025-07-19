@@ -32,7 +32,7 @@ export function unlockTopModel(pwd: string) {
 }
 
 export async function generateChat(args: ChatArgs): Promise<ChatResponse> {
-  const provider = process.env.LLM_PROVIDER || 'openai';
+  const provider = (globalThis as any).__llmProvider || process.env.LLM_PROVIDER || 'openai';
   const model = args.model;
   if (RESTRICTED_MODELS.includes(model) && !unlocked) {
     throw new Error('401');

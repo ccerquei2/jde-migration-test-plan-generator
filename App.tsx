@@ -54,6 +54,11 @@ const App: React.FC = () => {
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
   const [module, setModule] = useState<string>('Manufatura');
+  const [llmProvider, setLlmProvider] = useState<string>(process.env.LLM_PROVIDER || 'openai');
+
+  useEffect(() => {
+    (globalThis as any).__llmProvider = llmProvider;
+  }, [llmProvider]);
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
@@ -207,6 +212,20 @@ const App: React.FC = () => {
               <SparklesIcon className="w-6 h-6 text-indigo-500" />
               Configuração da Análise
             </h2>
+
+            <div className="space-y-2">
+              <label htmlFor="llm-provider" className="font-semibold text-slate-600 text-sm">Modelo LLM</label>
+              <select
+                id="llm-provider"
+                value={llmProvider}
+                onChange={(e) => setLlmProvider(e.target.value)}
+                className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
+              >
+                <option value="openai">OpenAI</option>
+                <option value="groq">Groq</option>
+                <option value="gemini">Gemini</option>
+              </select>
+            </div>
             
             <div className="space-y-4 p-4 border border-slate-200 rounded-lg">
                 <h3 className="font-semibold text-slate-700 -mb-2">Análise por Código-Fonte</h3>
