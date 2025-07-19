@@ -52,7 +52,12 @@ let openAIOverride: any = null;
 export function __setOpenAIOverride(o: any) { openAIOverride = o; }
 
 async function openaiClient(args: ChatArgs): Promise<ChatResponse> {
-  const openai = openAIOverride || new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai =
+    openAIOverride ||
+    new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true,
+    });
   const messages = [] as { role: 'system' | 'user'; content: string }[];
   if (args.systemPrompt) messages.push({ role: 'system', content: args.systemPrompt });
   messages.push({ role: 'user', content: args.prompt });
