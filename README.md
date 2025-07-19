@@ -6,9 +6,11 @@ This contains everything you need to run your app locally.
 
 **Prerequisites:**  Node.js
 
-
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Create a `.env.local` file and set your provider credentials:
+   - `LLM_PROVIDER` selects the LLM service (`openai`, `groq`, or `gemini`).
+   - Provide only the API key for that provider (`OPENAI_API_KEY`, `GROQ_API_KEY`, or `GEMINI_API_KEY`).
+   - Premium model IDs (`o3`, `o4`, `gpt-4.1`, `gpt-4.5`) also require the `TOP_MODEL_PWD` variable.
 3. Run the app:
    `npm run dev`
