@@ -8,6 +8,7 @@ export interface ChatArgs {
   systemPrompt?: string;
   temperature?: number;
   responseMimeType?: string;
+  provider?: string;
 }
 
 export interface ChatResponse {
@@ -32,7 +33,7 @@ export function unlockTopModel(pwd: string) {
 }
 
 export async function generateChat(args: ChatArgs): Promise<ChatResponse> {
-  const provider = process.env.LLM_PROVIDER || 'openai';
+  const provider = args.provider || process.env.LLM_PROVIDER || 'openai';
   const model = args.model;
   if (RESTRICTED_MODELS.includes(model) && !unlocked) {
     throw new Error('401');
