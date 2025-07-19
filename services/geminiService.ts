@@ -590,15 +590,16 @@ async function runSimpleAnalysis(vanillaCode: string, customCode: string, progra
 
 
 export async function generateTestPlan(
-    vanillaCode: string, 
+    vanillaCode: string,
     customCode: string,
     functionalSpecs: FunctionalSpec[],
-    programName: string, 
+    programName: string,
     includeEnhancedAnalysis: boolean,
     manufacturingBranch: string,
     distributionBranch: string,
     module: string,
-    onProgress: (message: string) => void
+    onProgress: (message: string) => void,
+    provider: string = process.env.LLM_PROVIDER || 'gemini'
 ): Promise<string> {
     if (!process.env.API_KEY) {
         throw new Error("A variável de ambiente API_KEY não está configurada.");

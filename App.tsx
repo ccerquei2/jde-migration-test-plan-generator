@@ -54,6 +54,7 @@ const App: React.FC = () => {
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
   const [module, setModule] = useState<string>('Manufatura');
+  const [provider, setProvider] = useState<string>(process.env.LLM_PROVIDER || 'gemini');
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
@@ -176,7 +177,8 @@ const App: React.FC = () => {
           manufacturingBranch, 
           distributionBranch,
           module,
-          setProgress
+          setProgress,
+          provider
       );
       setReport(result);
     } catch (err) {
@@ -186,7 +188,7 @@ const App: React.FC = () => {
       setIsLoading(false);
       setProgress('');
     }
-  }, [analysisChosen, vanillaFileContent, customFileContent, processedSpecs, programName, includeEnhancedAnalysis, manufacturingBranch, distributionBranch, module]);
+  }, [analysisChosen, vanillaFileContent, customFileContent, processedSpecs, programName, includeEnhancedAnalysis, manufacturingBranch, distributionBranch, module, provider]);
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans">
@@ -207,6 +209,20 @@ const App: React.FC = () => {
               <SparklesIcon className="w-6 h-6 text-indigo-500" />
               Configuração da Análise
             </h2>
+
+            <div className="space-y-2">
+              <label htmlFor="provider-select" className="font-semibold text-slate-600 text-sm">Provedor de LLM</label>
+              <select
+                id="provider-select"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+                className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
+              >
+                <option value="gemini">Gemini</option>
+                <option value="openai">OpenAI</option>
+                <option value="groq">Groq</option>
+              </select>
+            </div>
             
             <div className="space-y-4 p-4 border border-slate-200 rounded-lg">
                 <h3 className="font-semibold text-slate-700 -mb-2">Análise por Código-Fonte</h3>
