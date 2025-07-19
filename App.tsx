@@ -3,14 +3,16 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { FileUploader } from './components/FileUploader';
 import { ReportDisplay } from './components/ReportDisplay';
 import { AnalysisInfo } from './components/AnalysisInfo';
-import { generateTestPlan } from './services/geminiService';
+import { generateTestPlan, FunctionalSpec } from './services/geminiService';
 import { GeminiIcon, SparklesIcon } from './components/Icons';
+import { MultiFileUploader } from './components/MultiFileUploader';
+import mammoth from 'mammoth';
 
 const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; }> = ({ enabled, onChange }) => {
   return (
     <div className="flex items-center justify-between mt-6">
       <label htmlFor="metrics-toggle" className="flex flex-col cursor-pointer" onClick={() => onChange(!enabled)}>
-        <span className="font-semibold text-slate-700">Análise Detalhada</span>
+        <span className="font-semibold text-slate-700">Análise Detalhada de Código</span>
         <span className="text-sm text-slate-500">Gera um relatório mais profundo usando uma análise em múltiplas etapas.</span>
       </label>
       <button
@@ -36,8 +38,12 @@ const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) =>
 const App: React.FC = () => {
   const [vanillaFile, setVanillaFile] = useState<File | null>(null);
   const [customFile, setCustomFile] = useState<File | null>(null);
+  const [functionalSpecFiles, setFunctionalSpecFiles] = useState<File[]>([]);
+
   const [vanillaFileContent, setVanillaFileContent] = useState<string>('');
   const [customFileContent, setCustomFileContent] = useState<string>('');
+  const [processedSpecs, setProcessedSpecs] = useState<FunctionalSpec[]>([]);
+  
   const [programName, setProgramName] = useState<string>('');
   
   const [report, setReport] = useState<string>('');
@@ -47,6 +53,11 @@ const App: React.FC = () => {
   const [includeEnhancedAnalysis, setIncludeEnhancedAnalysis] = useState<boolean>(true);
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
+  const [module, setModule] = useState<string>('Manufatura');
+
+  const isSpecAnalysis = functionalSpecFiles.length > 0;
+  const isCodeAnalysis = customFile !== null;
+  const analysisChosen = isSpecAnalysis || isCodeAnalysis;
 
   useEffect(() => {
     const fileForName = vanillaFile || customFile;
@@ -58,16 +69,18 @@ const App: React.FC = () => {
     }
   }, [vanillaFile, customFile]);
 
+  const readTextFileContent = (file: File, setter: (content: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = (e) => setter(e.target?.result as string);
+    reader.readAsText(file);
+  }
 
   const handleVanillaFileChange = (file: File | null) => {
     setVanillaFile(file);
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        setVanillaFileContent(text);
-      };
-      reader.readAsText(file);
+      setFunctionalSpecFiles([]);
+      setProcessedSpecs([]);
+      readTextFileContent(file, setVanillaFileContent);
     } else {
       setVanillaFileContent('');
     }
@@ -76,20 +89,75 @@ const App: React.FC = () => {
   const handleCustomFileChange = (file: File | null) => {
     setCustomFile(file);
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        setCustomFileContent(text);
-      };
-      reader.readAsText(file);
+      setFunctionalSpecFiles([]);
+      setProcessedSpecs([]);
+      readTextFileContent(file, setCustomFileContent);
     } else {
       setCustomFileContent('');
     }
   };
+  
+  const handleFunctionalSpecFilesChange = (files: File[]) => {
+      setFunctionalSpecFiles(files);
+      if (files.length > 0) {
+          setVanillaFile(null);
+          setCustomFile(null);
+          setVanillaFileContent('');
+          setCustomFileContent('');
+          
+          setProgress('Processando documentos...');
+          const allPromises = files.map(file => processSpecFile(file));
+
+          Promise.all(allPromises)
+              .then(results => {
+                  setProcessedSpecs(results);
+                  setProgress('');
+              })
+              .catch(err => {
+                  console.error("Error processing spec files:", err);
+                  setError("Erro ao processar um ou mais arquivos de especificação. Apenas .docx, .txt e .md são suportados.");
+                  setProgress('');
+              });
+      } else {
+          setProcessedSpecs([]);
+      }
+  };
+
+  const processSpecFile = (file: File): Promise<FunctionalSpec> => {
+      return new Promise(async (resolve, reject) => {
+          const reader = new FileReader();
+          
+          if (file.name.endsWith('.docx')) {
+              reader.onload = async (e) => {
+                  try {
+                      const arrayBuffer = e.target?.result as ArrayBuffer;
+                      const result = await mammoth.convertToHtml({ arrayBuffer });
+                      const images: { mimeType: string, data: string }[] = [];
+                      // Mammoth does not directly give base64 images, this is a limitation
+                      // In a real app we would need a more powerful parser or backend processing.
+                      // For now, we pass the HTML content.
+                      resolve({ fileName: file.name, htmlContent: result.value, images: [] });
+                  } catch (err) {
+                      reject(err);
+                  }
+              };
+              reader.readAsArrayBuffer(file);
+          } else { // txt, md
+              reader.onload = (e) => {
+                  const textContent = e.target?.result as string;
+                  // Convert markdown to basic HTML for consistency
+                  const htmlContent = textContent.replace(/\n/g, '<br/>');
+                  resolve({ fileName: file.name, htmlContent, images: [] });
+              };
+              reader.readAsText(file);
+          }
+          reader.onerror = (e) => reject(e);
+      });
+  }
 
   const handleAnalyze = useCallback(async () => {
-    if (!customFileContent) {
-      setError('Por favor, carregue pelo menos o arquivo de código-fonte customizado.');
+    if (!analysisChosen) {
+      setError('Por favor, carregue o código-fonte customizado ou pelo menos um documento de especificação funcional.');
       return;
     }
     
@@ -102,11 +170,13 @@ const App: React.FC = () => {
       const result = await generateTestPlan(
           vanillaFileContent, 
           customFileContent,
+          processedSpecs,
           programName, 
           includeEnhancedAnalysis, 
           manufacturingBranch, 
           distributionBranch,
-          setProgress // Passa o callback de progresso
+          module,
+          setProgress
       );
       setReport(result);
     } catch (err) {
@@ -116,7 +186,7 @@ const App: React.FC = () => {
       setIsLoading(false);
       setProgress('');
     }
-  }, [vanillaFileContent, customFileContent, programName, includeEnhancedAnalysis, manufacturingBranch, distributionBranch]);
+  }, [analysisChosen, vanillaFileContent, customFileContent, processedSpecs, programName, includeEnhancedAnalysis, manufacturingBranch, distributionBranch, module]);
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans">
@@ -124,10 +194,10 @@ const App: React.FC = () => {
         <header className="text-center mb-10">
           <div className="flex items-center justify-center gap-4">
              <GeminiIcon className="w-12 h-12 text-blue-600" />
-            <h1 className="text-4xl font-bold text-slate-800">Gerador de Plano de Testes para Migração JDE</h1>
+            <h1 className="text-4xl font-bold text-slate-800">Gerador de Plano de Testes</h1>
           </div>
           <p className="text-lg text-slate-600 mt-2">
-            Acelere sua migração ou valide programas customizados gerando planos de teste automaticamente a partir do código-fonte.
+            Acelere a geração de Planos de Testes através das Especificações Funcionais ou do Código-Fonte
           </p>
         </header>
 
@@ -138,23 +208,56 @@ const App: React.FC = () => {
               Configuração da Análise
             </h2>
             
-            <div className="space-y-4">
-              <FileUploader
-                title="1. Carregar Fonte Padrão 9.1 (Opcional)"
-                file={vanillaFile}
-                onFileChange={handleVanillaFileChange}
-                accept=".txt,.c,.h,.er"
-              />
-              <FileUploader
-                title="2. Carregar Fonte Customizado"
-                file={customFile}
-                onFileChange={handleCustomFileChange}
-                accept=".txt,.c,.h,.er"
-              />
+            <div className="space-y-4 p-4 border border-slate-200 rounded-lg">
+                <h3 className="font-semibold text-slate-700 -mb-2">Análise por Código-Fonte</h3>
+                <FileUploader
+                    title="1. Carregar Fonte Padrão (Opcional)"
+                    file={vanillaFile}
+                    onFileChange={handleVanillaFileChange}
+                    accept=".txt,.c,.h,.er"
+                    disabled={isSpecAnalysis}
+                />
+                <FileUploader
+                    title="2. Carregar Fonte Customizado"
+                    file={customFile}
+                    onFileChange={handleCustomFileChange}
+                    accept=".txt,.c,.h,.er"
+                    disabled={isSpecAnalysis}
+                />
+            </div>
+
+            <div className="relative flex items-center">
+                <div className="flex-grow border-t border-slate-300"></div>
+                <span className="flex-shrink mx-4 text-slate-500 font-semibold">OU</span>
+                <div className="flex-grow border-t border-slate-300"></div>
+            </div>
+
+            <div className="space-y-4 p-4 border border-slate-200 rounded-lg">
+                 <h3 className="font-semibold text-slate-700 -mb-2">Análise por Especificação Funcional</h3>
+                <MultiFileUploader
+                    title="Carregar Definição(ões) Funcional(is)"
+                    files={functionalSpecFiles}
+                    onFilesChange={handleFunctionalSpecFilesChange}
+                    accept=".txt,.md,.docx"
+                    disabled={isCodeAnalysis}
+                />
             </div>
             
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-4">
                  <h3 className="font-semibold text-slate-700 -mb-2">Contexto da Empresa (Opcional)</h3>
+                 <div className="space-y-2">
+                    <label htmlFor="module-select" className="font-semibold text-slate-600 text-sm">Módulo Principal</label>
+                    <select
+                        id="module-select"
+                        value={module}
+                        onChange={(e) => setModule(e.target.value)}
+                        className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
+                    >
+                        <option value="Manufatura">Manufatura</option>
+                        <option value="Distribuição">Distribuição</option>
+                        <option value="Financeiro">Financeiro</option>
+                    </select>
+                </div>
                  <div className="space-y-2">
                     <label htmlFor="fabril-branch" className="font-semibold text-slate-600 text-sm">Filial Fabril Principal</label>
                     <input
@@ -178,12 +281,14 @@ const App: React.FC = () => {
                     />
                 </div>
             </div>
-
-            <ToggleSwitch enabled={includeEnhancedAnalysis} onChange={setIncludeEnhancedAnalysis} />
+            
+            {!isSpecAnalysis && (
+              <ToggleSwitch enabled={includeEnhancedAnalysis} onChange={setIncludeEnhancedAnalysis} />
+            )}
 
             <button
               onClick={handleAnalyze}
-              disabled={isLoading || !customFile}
+              disabled={isLoading || !analysisChosen}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               {isLoading ? (

@@ -1,6 +1,6 @@
 {
-  "name": "JDE Migration Test Plan Generator",
-  "description": "An MVP application that uses Gemini to compare two versions of JD Edwards source code (vanilla vs. custom) and generate a targeted test plan based on the detected differences.",
+  "name": "Gerador de Plano de Testes",
+  "description": "Acelere a geração de Planos de Testes através das Especificações Funcionais ou do Código-Fonte",
   "requestFramePermissions": [],
   "prompt": ""
 }

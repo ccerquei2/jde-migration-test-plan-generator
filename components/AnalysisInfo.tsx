@@ -18,7 +18,7 @@ export const AnalysisInfo: React.FC<AnalysisInfoProps> = ({ isLoading, progress 
                     <p className="text-lg font-semibold text-slate-600">
                       {progress || 'Gerando seu plano de testes...'}
                     </p>
-                    <p className="text-sm text-slate-500">O Gemini está analisando as diferenças de código. Isso pode levar alguns minutos para arquivos grandes.</p>
+                    <p className="text-sm text-slate-500">O Gemini está analisando os arquivos. Isso pode levar alguns minutos para documentos ou códigos grandes.</p>
                 </div>
             </div>
         )
@@ -30,10 +30,15 @@ export const AnalysisInfo: React.FC<AnalysisInfoProps> = ({ isLoading, progress 
                 <LightBulbIcon className="w-6 h-6 text-blue-600" />
                 Como Funciona
             </h2>
-            <p className="mt-2 text-slate-600">
-                Esta ferramenta otimiza os testes de migração. Carregue seus arquivos de código-fonte (padrão e customizado).
-                Ao usar a **Análise Detalhada**, a ferramenta divide o código em funções, analisa cada mudança individualmente e depois sintetiza os resultados em um relatório completo.
-                Isso ajuda a focar seus esforços de QA no que é mais importante, com maior profundidade e precisão.
+             <p className="mt-2 text-slate-600">
+                Esta ferramenta acelera a criação de planos de teste. Você pode:
+            </p>
+            <ul className="list-disc list-inside mt-2 text-slate-600 space-y-2 pl-2">
+                <li><strong>Analisar Código-Fonte:</strong> Carregue o código JDE customizado (e o padrão, opcionalmente) para gerar testes baseados nas modificações técnicas. A "Análise Detalhada" quebra o código em funções para um resultado mais preciso.</li>
+                <li><strong>Analisar Documentos:</strong> Carregue um ou mais documentos de especificação funcional. A IA irá interpretar os requisitos de negócio e criar um plano de teste focado no usuário final, em linguagem não técnica.</li>
+            </ul>
+            <p className="mt-4 text-slate-600">
+                O resultado é um documento de teste profissional, pronto para ser usado por sua equipe de QA, economizando tempo e focando nos pontos mais importantes.
             </p>
         </div>
     </div>

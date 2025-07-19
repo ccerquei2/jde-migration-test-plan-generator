@@ -9,57 +9,23 @@ interface ReportDisplayProps {
 export const ReportDisplay: React.FC<ReportDisplayProps> = ({ report }) => {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
-    try {
-      const blob = new Blob([report], { type: 'text/html' });
-      const data = [new ClipboardItem({ [blob.type]: blob })];
-      await navigator.clipboard.write(data);
-    } catch (err) {
-      console.error('Falha ao copiar HTML, tentando como texto plano.', err);
-      // Fallback para texto plano se a cópia de HTML falhar
-      navigator.clipboard.writeText(report);
-    } finally {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const handleCopy = () => {
+    navigator.clipboard.writeText(report).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    }).catch(err => {
+        console.error('Falha ao copiar o HTML.', err);
+    });
   };
 
   const handleDownload = () => {
-    const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-            <meta charset='utf-8'>
-            <title>Plano de Teste JDE</title>
-            <!--[if gte mso 9]>
-            <xml>
-                <w:WordDocument>
-                    <w:View>Print</w:View>
-                    <w:Zoom>90</w:Zoom>
-                    <w:DoNotOptimizeForBrowser/>
-                </w:WordDocument>
-                <w:LatentStyles DefLockedState="false" DefUnhideWhenUsed="true"
-                    DefSemiHidden="true" DefQFormat="false" DefPriority="99"
-                    LatentStyleCount="267">
-                </w:LatentStyles>
-            </xml>
-            <![endif]-->
-            <style>
-                @page {
-                    size: 11in 8.5in;
-                    mso-page-orientation: landscape;
-                    margin: 1in;
-                }
-            </style>
-        </head>
-        <body>`;
-
-    const footer = "</body></html>";
-    const sourceHTML = header + report + footer;
-
+    // The 'report' variable now contains a full, self-contained HTML document with all necessary styles.
+    const sourceHTML = report;
     const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
     const fileDownload = document.createElement("a");
     document.body.appendChild(fileDownload);
     fileDownload.href = source;
-    fileDownload.download = 'plano-de-teste-jde.doc';
+    fileDownload.download = 'plano-de-teste.doc';
     fileDownload.click();
     document.body.removeChild(fileDownload);
   };
@@ -77,7 +43,7 @@ export const ReportDisplay: React.FC<ReportDisplayProps> = ({ report }) => {
             className="flex items-center gap-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md transition-colors"
           >
             {copied ? <ClipboardCheckIcon className="w-5 h-5 text-green-600" /> : <ClipboardIcon className="w-5 h-5" />}
-            {copied ? 'Copiado!' : 'Copiar'}
+            {copied ? 'Copiado!' : 'Copiar HTML'}
           </button>
           <button
             onClick={handleDownload}

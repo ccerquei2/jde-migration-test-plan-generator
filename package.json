@@ -1,5 +1,5 @@
 {
-  "name": "jde-migration-test-plan-generator",
+  "name": "gerador-de-plano-de-testes",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,7 +12,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "@google/genai": "^1.8.0",
-    "diff-match-patch": "^1.0.5"
+    "diff-match-patch": "^1.0.5",
+    "mammoth": "1.8.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
