@@ -54,6 +54,7 @@ const App: React.FC = () => {
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
   const [module, setModule] = useState<string>('Manufatura');
+  const [llmProvider, setLlmProvider] = useState<string>(process.env.LLM_PROVIDER || 'openai');
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
@@ -176,6 +177,7 @@ const App: React.FC = () => {
           manufacturingBranch, 
           distributionBranch,
           module,
+          llmProvider,
           setProgress
       );
       setReport(result);
@@ -245,7 +247,7 @@ const App: React.FC = () => {
             
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-4">
                  <h3 className="font-semibold text-slate-700 -mb-2">Contexto da Empresa (Opcional)</h3>
-                 <div className="space-y-2">
+                <div className="space-y-2">
                     <label htmlFor="module-select" className="font-semibold text-slate-600 text-sm">Módulo Principal</label>
                     <select
                         id="module-select"
@@ -256,6 +258,19 @@ const App: React.FC = () => {
                         <option value="Manufatura">Manufatura</option>
                         <option value="Distribuição">Distribuição</option>
                         <option value="Financeiro">Financeiro</option>
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="provider-select" className="font-semibold text-slate-600 text-sm">Modelo de IA</label>
+                    <select
+                        id="provider-select"
+                        value={llmProvider}
+                        onChange={(e) => setLlmProvider(e.target.value)}
+                        className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
+                    >
+                        <option value="openai">OpenAI</option>
+                        <option value="groq">Groq</option>
+                        <option value="gemini">Gemini</option>
                     </select>
                 </div>
                  <div className="space-y-2">
