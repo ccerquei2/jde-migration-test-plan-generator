@@ -588,8 +588,15 @@ export async function generateTestPlan(
     module: string,
     onProgress: (message: string) => void
 ): Promise<string> {
-    if (!process.env.API_KEY) {
-        throw new Error("A variável de ambiente API_KEY não está configurada.");
+    const provider = process.env.LLM_PROVIDER?.toLowerCase();
+    if (provider === 'openai' && !process.env.OPENAI_API_KEY) {
+        throw new Error("A variável de ambiente OPENAI_API_KEY não está configurada.");
+    }
+    if (provider === 'groq' && !process.env.GROQ_API_KEY) {
+        throw new Error("A variável de ambiente GROQ_API_KEY não está configurada.");
+    }
+    if (provider === 'gemini' && !process.env.GEMINI_API_KEY && !process.env.API_KEY) {
+        throw new Error("A variável de ambiente GEMINI_API_KEY não está configurada.");
     }
     
     const finalProgramName = programName || "Programa Desconhecido";
