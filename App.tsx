@@ -55,17 +55,20 @@ const App: React.FC = () => {
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
   const envProvider = process.env.LLM_PROVIDER;
-  const initialProvider = envProvider && envProvider !== 'undefined' ? envProvider : 'openai';
+  const initialProvider = envProvider && envProvider !== 'undefined'
+    ? envProvider.toLowerCase()
+    : 'openai';
   const [module, setModule] = useState<string>('Manufatura');
   const [llmProvider, setLlmProvider] = useState<string>(initialProvider);
-  const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider][0]);
+  const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider]?.[0] || PROVIDER_MODELS.openai[0]);
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
   const analysisChosen = isSpecAnalysis || isCodeAnalysis;
 
   useEffect(() => {
-    setLlmModel(PROVIDER_MODELS[llmProvider][0]);
+    const modelList = PROVIDER_MODELS[llmProvider] || PROVIDER_MODELS.openai;
+    setLlmModel(modelList[0]);
   }, [llmProvider]);
 
   useEffect(() => {

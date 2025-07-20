@@ -50,7 +50,8 @@ export function unlockTopModel(pwd: string) {
 
 export async function generateChat(args: ChatArgs): Promise<ChatResponse> {
   const envProvider = process.env.LLM_PROVIDER;
-  const provider = (args.provider || (envProvider && envProvider !== 'undefined' ? envProvider : 'openai')).toLowerCase();
+  const providerRaw = args.provider || (envProvider && envProvider !== 'undefined' ? envProvider : 'openai');
+  const provider = (providerRaw || 'openai').toLowerCase();
   const model = args.model;
   if ((RESTRICTED_MODELS as readonly string[]).includes(model) && !unlocked) {
     throw new Error('401');
