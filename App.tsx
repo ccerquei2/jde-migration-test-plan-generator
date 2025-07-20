@@ -4,6 +4,7 @@ import { FileUploader } from './components/FileUploader';
 import { ReportDisplay } from './components/ReportDisplay';
 import { AnalysisInfo } from './components/AnalysisInfo';
 import { generateTestPlan, FunctionalSpec } from './services/geminiService';
+import { PROVIDER_MODELS, unlockTopModel } from './lib/llmClient';
 import { GeminiIcon, SparklesIcon } from './components/Icons';
 import { MultiFileUploader } from './components/MultiFileUploader';
 import mammoth from 'mammoth';
@@ -53,12 +54,21 @@ const App: React.FC = () => {
   const [includeEnhancedAnalysis, setIncludeEnhancedAnalysis] = useState<boolean>(true);
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
+  const envProvider = process.env.LLM_PROVIDER;
+  const initialProviderRaw = envProvider && envProvider !== 'undefined' ? envProvider.toLowerCase() : 'openai';
+  const initialProvider = PROVIDER_MODELS[initialProviderRaw] ? initialProviderRaw : 'openai';
   const [module, setModule] = useState<string>('Manufatura');
-  const [llmProvider, setLlmProvider] = useState<string>(process.env.LLM_PROVIDER || 'openai');
+  const [llmProvider, setLlmProvider] = useState<string>(initialProvider);
+  const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider][0]);
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
   const analysisChosen = isSpecAnalysis || isCodeAnalysis;
+
+  useEffect(() => {
+    const modelList = PROVIDER_MODELS[llmProvider] || PROVIDER_MODELS.openai;
+    setLlmModel(modelList[0]);
+  }, [llmProvider]);
 
   useEffect(() => {
     const fileForName = vanillaFile || customFile;
@@ -69,6 +79,12 @@ const App: React.FC = () => {
         setProgramName('');
     }
   }, [vanillaFile, customFile]);
+
+  useEffect(() => {
+    if (process.env.TOP_MODEL_PWD) {
+      try { unlockTopModel(process.env.TOP_MODEL_PWD); } catch {}
+    }
+  }, []);
 
   const readTextFileContent = (file: File, setter: (content: string) => void) => {
     const reader = new FileReader();
@@ -178,6 +194,7 @@ const App: React.FC = () => {
           distributionBranch,
           module,
           llmProvider,
+          llmModel,
           setProgress
       );
       setReport(result);
@@ -188,7 +205,7 @@ const App: React.FC = () => {
       setIsLoading(false);
       setProgress('');
     }
-  }, [analysisChosen, vanillaFileContent, customFileContent, processedSpecs, programName, includeEnhancedAnalysis, manufacturingBranch, distributionBranch, module]);
+  }, [analysisChosen, vanillaFileContent, customFileContent, processedSpecs, programName, includeEnhancedAnalysis, manufacturingBranch, distributionBranch, module, llmProvider, llmModel]);
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans">
@@ -261,7 +278,7 @@ const App: React.FC = () => {
                     </select>
                 </div>
                 <div className="space-y-2">
-                    <label htmlFor="provider-select" className="font-semibold text-slate-600 text-sm">Modelo de IA</label>
+                    <label htmlFor="provider-select" className="font-semibold text-slate-600 text-sm">Provedor de IA</label>
                     <select
                         id="provider-select"
                         value={llmProvider}
@@ -271,6 +288,19 @@ const App: React.FC = () => {
                         <option value="openai">OpenAI</option>
                         <option value="groq">Groq</option>
                         <option value="gemini">Gemini</option>
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="model-select" className="font-semibold text-slate-600 text-sm">Modelo</label>
+                    <select
+                        id="model-select"
+                        value={llmModel}
+                        onChange={(e) => setLlmModel(e.target.value)}
+                        className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
+                    >
+                        {(PROVIDER_MODELS[llmProvider] || PROVIDER_MODELS.openai).map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
                     </select>
                 </div>
                  <div className="space-y-2">

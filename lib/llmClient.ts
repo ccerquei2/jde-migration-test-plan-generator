@@ -2,6 +2,22 @@ import { estimateUSD } from './costEstimator.js';
 import OpenAI from 'openai';
 import { GoogleGenAI } from '@google/genai';
 
+export const PROVIDER_MODELS: Record<string, string[]> = {
+  openai: [
+    'gpt-4o-mini',
+    'gpt-4o',
+    'gpt-4.1-mini',
+    'gpt-4.1-nano',
+    'gpt-3.5-turbo-0125',
+    'o3',
+    'o4',
+    'gpt-4.1',
+    'gpt-4.5'
+  ],
+  groq: ['groq/llama3-8b-8192'],
+  gemini: ['gemini-2.5-flash']
+} as const;
+
 export interface ChatArgs {
   model: string;
   prompt: string;
@@ -18,7 +34,7 @@ export interface ChatResponse {
   costUSD: number;
 }
 
-const RESTRICTED_MODELS = ['o3', 'o4', 'gpt-4.1', 'gpt-4.5'];
+export const RESTRICTED_MODELS = ['o3', 'o4', 'gpt-4.1', 'gpt-4.5'] as const;
 let unlocked = false;
 export function unlockTopModel(pwd: string) {
   const today = new Date();
@@ -33,9 +49,11 @@ export function unlockTopModel(pwd: string) {
 }
 
 export async function generateChat(args: ChatArgs): Promise<ChatResponse> {
-  const provider = args.provider || process.env.LLM_PROVIDER || 'openai';
+  const envProvider = process.env.LLM_PROVIDER;
+  const providerRaw = args.provider || (envProvider && envProvider !== 'undefined' ? envProvider : 'openai');
+  const provider = (providerRaw || 'openai').toLowerCase();
   const model = args.model;
-  if (RESTRICTED_MODELS.includes(model) && !unlocked) {
+  if ((RESTRICTED_MODELS as readonly string[]).includes(model) && !unlocked) {
     throw new Error('401');
   }
   switch (provider) {
