@@ -233,12 +233,18 @@ const App: React.FC = () => {
       <main className="container mx-auto px-4 py-8">
         <header className="text-center mb-10">
           <div className="flex items-center justify-center gap-4">
-             <GeminiIcon className="w-12 h-12 text-blue-600" />
+            <img
+              src="data:image/jpeg;base64,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"
+              alt="Logo"
+              className="w-12 h-12 rounded-full"
+            />
+            <GeminiIcon className="w-12 h-12 text-blue-600" />
             <h1 className="text-4xl font-bold text-slate-800">Gerador de Plano de Testes</h1>
           </div>
           <p className="text-lg text-slate-600 mt-2">
-            Acelere a geração de Planos de Testes através das Especificações Funcionais ou do Código-Fonte
+            Geração de Planos de Testes através de Especificações Funcionais ou do Código-Fonte
           </p>
+          <p className="text-sm text-slate-500">Casa Granado Phebo - Tecnologia da Informação</p>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
