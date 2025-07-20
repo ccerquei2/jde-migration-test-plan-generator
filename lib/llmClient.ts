@@ -14,7 +14,7 @@ export const PROVIDER_MODELS: Record<string, string[]> = {
     'gpt-4.1',
     'gpt-4.5'
   ],
-  groq: ['groq/llama3-8b-8192'],
+  groq: ['llama3-8b-8192'],
   gemini: ['gemini-2.5-flash']
 } as const;
 
