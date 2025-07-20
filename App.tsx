@@ -4,7 +4,7 @@ import { FileUploader } from './components/FileUploader';
 import { ReportDisplay } from './components/ReportDisplay';
 import { AnalysisInfo } from './components/AnalysisInfo';
 import { generateTestPlan, FunctionalSpec } from './services/geminiService';
-import { PROVIDER_MODELS, unlockTopModel } from './lib/llmClient';
+import { PROVIDER_MODELS, unlockTopModel, RESTRICTED_MODELS } from './lib/llmClient';
 import { GeminiIcon, SparklesIcon } from './components/Icons';
 import { MultiFileUploader } from './components/MultiFileUploader';
 import mammoth from 'mammoth';
@@ -138,6 +138,22 @@ const App: React.FC = () => {
       } else {
           setProcessedSpecs([]);
       }
+  };
+
+  const handleModelChange = (model: string) => {
+    if ((RESTRICTED_MODELS as readonly string[]).includes(model)) {
+      const pwd = window.prompt('Senha para modelos avançados (ddmmaa):');
+      if (!pwd) {
+        return;
+      }
+      try {
+        unlockTopModel(pwd);
+      } catch (err) {
+        setError('Senha incorreta.');
+        return;
+      }
+    }
+    setLlmModel(model);
   };
 
   const processSpecFile = (file: File): Promise<FunctionalSpec> => {
@@ -295,7 +311,7 @@ const App: React.FC = () => {
                     <select
                         id="model-select"
                         value={llmModel}
-                        onChange={(e) => setLlmModel(e.target.value)}
+                        onChange={(e) => handleModelChange(e.target.value)}
                         className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
                     >
                         {(PROVIDER_MODELS[llmProvider] || PROVIDER_MODELS.openai).map(m => (
