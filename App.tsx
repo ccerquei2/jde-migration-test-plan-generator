@@ -4,6 +4,7 @@ import { FileUploader } from './components/FileUploader';
 import { ReportDisplay } from './components/ReportDisplay';
 import { AnalysisInfo } from './components/AnalysisInfo';
 import { generateTestPlan, FunctionalSpec } from './services/geminiService';
+import { MODELS_BY_PROVIDER, getModel } from './lib/models';
 import { GeminiIcon, SparklesIcon } from './components/Icons';
 import { MultiFileUploader } from './components/MultiFileUploader';
 import mammoth from 'mammoth';
@@ -55,10 +56,15 @@ const App: React.FC = () => {
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
   const [module, setModule] = useState<string>('Manufatura');
   const [llmProvider, setLlmProvider] = useState<string>(process.env.LLM_PROVIDER || 'openai');
+  const [llmModel, setLlmModel] = useState<string>(getModel(llmProvider));
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
   const analysisChosen = isSpecAnalysis || isCodeAnalysis;
+
+  useEffect(() => {
+    setLlmModel(getModel(llmProvider));
+  }, [llmProvider]);
 
   useEffect(() => {
     const fileForName = vanillaFile || customFile;
@@ -178,6 +184,7 @@ const App: React.FC = () => {
           distributionBranch,
           module,
           llmProvider,
+          llmModel,
           setProgress
       );
       setReport(result);
@@ -271,6 +278,19 @@ const App: React.FC = () => {
                         <option value="openai">OpenAI</option>
                         <option value="groq">Groq</option>
                         <option value="gemini">Gemini</option>
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="model-select" className="font-semibold text-slate-600 text-sm">Modelo</label>
+                    <select
+                        id="model-select"
+                        value={llmModel}
+                        onChange={(e) => setLlmModel(e.target.value)}
+                        className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
+                    >
+                        {MODELS_BY_PROVIDER[llmProvider].map(m => (
+                            <option key={m} value={m}>{m}</option>
+                        ))}
                     </select>
                 </div>
                  <div className="space-y-2">
