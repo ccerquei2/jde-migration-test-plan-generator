@@ -1,6 +1,6 @@
 {
   "name": "Gerador de Plano de Testes",
-  "description": "Acelere a geração de Planos de Testes através das Especificações Funcionais ou do Código-Fonte",
+  "description": "Geração de Planos de Testes através de Especificações Funcionais ou do Código-Fonte",
   "requestFramePermissions": [],
   "prompt": ""
 }
