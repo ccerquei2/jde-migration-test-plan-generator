@@ -60,11 +60,11 @@ const DEFAULT_MODELS: Record<string, string> = {
     gemini: 'gemini-2.5-flash'
 };
 
-function getModel(provider: string): string {
-    return DEFAULT_MODELS[provider] || DEFAULT_MODELS['openai'];
+function getModel(provider: string, override?: string): string {
+    return override || DEFAULT_MODELS[provider] || DEFAULT_MODELS['openai'];
 }
 
-async function parseAndCorrectJson(text: string, provider: string): Promise<any> {
+async function parseAndCorrectJson(text: string, provider: string, model: string): Promise<any> {
     const fenceRegex = /^`{3}(json)?\s*\n?(.*?)\n?`{3}$/s;
     let jsonText = text.trim();
     const match = jsonText.match(fenceRegex);
@@ -77,7 +77,7 @@ async function parseAndCorrectJson(text: string, provider: string): Promise<any>
         console.warn("Análise JSON inicial falhou. Tentando autocorreção...", { error: e, text: jsonText });
         const prompt = `O seguinte texto deveria ser um JSON, mas está malformado. Por favor, corrija-o e retorne apenas o objeto JSON válido.\n\nJSON Inválido:\n${jsonText}`;
         const result = await generateChat({
-            model: getModel(provider),
+            model: getModel(provider, model),
             provider,
             prompt,
             systemPrompt: systemInstructionForJsonFix,
@@ -318,6 +318,7 @@ async function runFunctionalSpecAnalysis(
     distributionBranch: string,
     module: string,
     provider: string,
+    model: string,
     onProgress: (message: string) => void
 ): Promise<string> {
     onProgress('Analisando especificações funcionais...');
@@ -374,7 +375,7 @@ async function runFunctionalSpecAnalysis(
     }
 
     const response = await generateChat({
-         model: getModel(provider),
+         model: getModel(provider, model),
          provider,
          prompt: promptText,
          systemPrompt: "Sua resposta deve ser um documento HTML completo e válido, baseado estritamente nas informações e metodologia fornecidas. Foque em uma linguagem de negócios clara, use <strong> para negrito e garanta cobertura total dos requisitos."
@@ -396,6 +397,7 @@ async function runMultiStepAnalysis(
     manufacturingBranch: string,
     distributionBranch: string,
     provider: string,
+    model: string,
     onProgress: (message: string) => void
 ): Promise<string> {
     const isFromScratch = !vanillaCode.trim();
@@ -405,7 +407,7 @@ async function runMultiStepAnalysis(
 
     if (customFunctions.size === 0) {
         onProgress('Nenhuma função C-like encontrada. Realizando análise simples...');
-        return runSimpleAnalysis(vanillaCode, customCode, programName, manufacturingBranch, distributionBranch, provider);
+        return runSimpleAnalysis(vanillaCode, customCode, programName, manufacturingBranch, distributionBranch, provider, model);
     }
     
     const functionsToAnalyze: { name: string, content: string, type: 'diff' | 'full' }[] = [];
@@ -448,7 +450,7 @@ async function runMultiStepAnalysis(
                 : getComprehensionPrompt_FromScratch(func.name, programName, func.content);
 
             const comprehensionResult = await generateChat({
-                model: getModel(provider),
+                model: getModel(provider, model),
                 provider,
                 prompt: comprehensionPrompt,
                 systemPrompt: systemInstructionAntiHallucination,
@@ -460,14 +462,14 @@ async function runMultiStepAnalysis(
             onProgress(`Gerando testes para a função ${i + 1}/${functionsToAnalyze.length}: ${func.name}`);
             const testCasePrompt = getTestCaseGenerationPrompt(func.name, programName, analysisContext, manufacturingBranch, distributionBranch);
             const testCaseResponse = await generateChat({
-                model: getModel(provider),
+                model: getModel(provider, model),
                 provider,
                 prompt: testCasePrompt,
                 systemPrompt: systemInstructionAntiHallucination,
                 temperature: 0.2,
                 responseMimeType: "application/json"
             });
-            const parsedJson = await parseAndCorrectJson(testCaseResponse.content, provider);
+            const parsedJson = await parseAndCorrectJson(testCaseResponse.content, provider, model);
             if (parsedJson && parsedJson.test_scenarios && Array.isArray(parsedJson.test_scenarios)) {
                 allTestScenarios = allTestScenarios.concat(parsedJson.test_scenarios);
             }
@@ -492,7 +494,7 @@ async function runMultiStepAnalysis(
         try {
             const transcriptionPrompt = getTranscriptionPrompt(JSON.stringify(batch), i + 1);
             const response = await generateChat({
-                model: getModel(provider),
+                model: getModel(provider, model),
                 provider,
                 prompt: transcriptionPrompt,
                 systemPrompt: systemInstructionAntiHallucination,
@@ -522,7 +524,7 @@ async function runMultiStepAnalysis(
     return assembleFinalReport(programName, metrics, allTableRows, isFromScratch);
 }
 
-async function runSimpleAnalysis(vanillaCode: string, customCode: string, programName: string, manufacturingBranch: string, distributionBranch: string, provider: string): Promise<string> {
+async function runSimpleAnalysis(vanillaCode: string, customCode: string, programName: string, manufacturingBranch: string, distributionBranch: string, provider: string, model: string): Promise<string> {
     const isFromScratch = !vanillaCode.trim();
 
     let prompt: string;
@@ -579,7 +581,7 @@ async function runSimpleAnalysis(vanillaCode: string, customCode: string, progra
     }
 
     const response = await generateChat({
-         model: getModel(provider),
+         model: getModel(provider, model),
          provider,
          prompt,
          systemPrompt: "Sua resposta deve ser um documento HTML completo e válido, baseado estritamente na metodologia fornecida. Garanta cobertura total das mudanças ou funcionalidades do código."
@@ -605,6 +607,7 @@ export async function generateTestPlan(
     distributionBranch: string,
     module: string,
     provider: string,
+    model: string,
     onProgress: (message: string) => void
 ): Promise<string> {
     provider = (provider || process.env.LLM_PROVIDER || 'openai').toLowerCase();
@@ -622,7 +625,7 @@ export async function generateTestPlan(
 
     // Prioritize functional spec analysis
     if (functionalSpecs && functionalSpecs.length > 0) {
-        return runFunctionalSpecAnalysis(functionalSpecs, finalProgramName, manufacturingBranch, distributionBranch, module, provider, onProgress);
+        return runFunctionalSpecAnalysis(functionalSpecs, finalProgramName, manufacturingBranch, distributionBranch, module, provider, model, onProgress);
     }
 
     if (!customCode.trim()) {
@@ -631,9 +634,9 @@ export async function generateTestPlan(
 
     if (includeEnhancedAnalysis) {
         onProgress('Executando análise detalhada de código...');
-        return runMultiStepAnalysis(vanillaCode, customCode, finalProgramName, manufacturingBranch, distributionBranch, provider, onProgress);
+        return runMultiStepAnalysis(vanillaCode, customCode, finalProgramName, manufacturingBranch, distributionBranch, provider, model, onProgress);
     } else {
         onProgress('Executando análise simples de código...');
-        return runSimpleAnalysis(vanillaCode, customCode, finalProgramName, manufacturingBranch, distributionBranch, provider);
+        return runSimpleAnalysis(vanillaCode, customCode, finalProgramName, manufacturingBranch, distributionBranch, provider, model);
     }
 }
