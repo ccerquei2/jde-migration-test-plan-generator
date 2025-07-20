@@ -55,12 +55,11 @@ const App: React.FC = () => {
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
   const envProvider = process.env.LLM_PROVIDER;
-  const initialProvider = envProvider && envProvider !== 'undefined'
-    ? envProvider.toLowerCase()
-    : 'openai';
+  const initialProviderRaw = envProvider && envProvider !== 'undefined' ? envProvider.toLowerCase() : 'openai';
+  const initialProvider = PROVIDER_MODELS[initialProviderRaw] ? initialProviderRaw : 'openai';
   const [module, setModule] = useState<string>('Manufatura');
   const [llmProvider, setLlmProvider] = useState<string>(initialProvider);
-  const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider]?.[0] || PROVIDER_MODELS.openai[0]);
+  const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider][0]);
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
@@ -299,7 +298,7 @@ const App: React.FC = () => {
                         onChange={(e) => setLlmModel(e.target.value)}
                         className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
                     >
-                        {PROVIDER_MODELS[llmProvider].map(m => (
+                        {(PROVIDER_MODELS[llmProvider] || PROVIDER_MODELS.openai).map(m => (
                           <option key={m} value={m}>{m}</option>
                         ))}
                     </select>
