@@ -56,7 +56,7 @@ function createFunctionDiff(vanillaCode: string, customCode: string): string {
 
 const DEFAULT_MODELS: Record<string, string> = {
     openai: 'gpt-3.5-turbo-0125',
-    groq: 'groq/llama3-8b-8192',
+    groq: 'llama3-8b-8192',
     gemini: 'gemini-2.5-flash'
 };
 
