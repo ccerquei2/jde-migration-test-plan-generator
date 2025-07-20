@@ -62,6 +62,50 @@ const App: React.FC = () => {
   const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider][0]);
   const [premiumUnlocked, setPremiumUnlocked] = useState<boolean>(false);
 
+  const logoBase64 =
+    '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';
+
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
   const analysisChosen = isSpecAnalysis || isCodeAnalysis;
@@ -233,11 +277,19 @@ const App: React.FC = () => {
       <main className="container mx-auto px-4 py-8">
         <header className="text-center mb-10">
           <div className="flex items-center justify-center gap-4">
-             <GeminiIcon className="w-12 h-12 text-blue-600" />
+            <img
+              src={`data:image/jpeg;base64,${logoBase64}`}
+              alt="Casa Granado Phebo logo"
+              className="w-12 h-12 rounded-full"
+            />
+            <GeminiIcon className="w-12 h-12 text-blue-600" />
             <h1 className="text-4xl font-bold text-slate-800">Gerador de Plano de Testes</h1>
           </div>
           <p className="text-lg text-slate-600 mt-2">
-            Acelere a geração de Planos de Testes através das Especificações Funcionais ou do Código-Fonte
+            Geração de Planos de Testes através de Especificações Funcionais ou do Código-Fonte
+          </p>
+          <p className="text-sm text-slate-500 mt-1">
+            Casa Granado Phebo - Tecnologia da Informação
           </p>
         </header>
 
