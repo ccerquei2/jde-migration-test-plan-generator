@@ -14,3 +14,6 @@ This contains everything you need to run your app locally.
    - Premium model IDs (`o3`, `o4`, `gpt-4.1`, `gpt-4.5`) also require the `TOP_MODEL_PWD` variable.
 3. Run the app:
    `npm run dev`
+4. When selecting premium models (o3, o4, gpt-4.1, gpt-4.5) you will be asked
+   for a password. The password is always the current day in the `ddmmaa`
+   format.
