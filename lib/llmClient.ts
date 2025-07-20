@@ -14,7 +14,7 @@ export const PROVIDER_MODELS: Record<string, string[]> = {
     'gpt-4.1',
     'gpt-4.5'
   ],
-  groq: ['groq/llama3-8b-8192'],
+  groq: ['llama3-8b-8192'],
   gemini: ['gemini-2.5-flash']
 } as const;
 
@@ -109,6 +109,16 @@ async function groqClient(args: ChatArgs): Promise<ChatResponse> {
     },
     body: JSON.stringify({ model: args.model, messages, temperature: args.temperature })
   });
+  if (!resp.ok) {
+    let errText: string;
+    try {
+      const errData = await resp.json();
+      errText = errData?.error?.message || JSON.stringify(errData);
+    } catch {
+      errText = await resp.text();
+    }
+    throw new Error(`Groq API error ${resp.status}: ${errText}`);
+  }
   const data = await resp.json();
   const content = data.choices?.[0]?.message?.content || '';
   const inTok = data.usage?.prompt_tokens ?? 0;

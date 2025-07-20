@@ -4,7 +4,7 @@ export const PRICE_TABLE = {
   "gpt-4.1-mini":  {in: 0.0004, out: 0.0016},
   "gpt-4.1-nano":  {in: 0.0002, out: 0.0008},
   "gpt-3.5-turbo-0125": {in: 0.0005, out: 0.0015},
-  "groq/llama3-8b-8192": {in: 0.00005, out: 0.00008}
+  "llama3-8b-8192": {in: 0.00005, out: 0.00008}
 } as const;
 
 export function estimateUSD(modelId: string, inTok: number, outTok: number): number {
