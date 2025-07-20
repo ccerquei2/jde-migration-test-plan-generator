@@ -109,6 +109,16 @@ async function groqClient(args: ChatArgs): Promise<ChatResponse> {
     },
     body: JSON.stringify({ model: args.model, messages, temperature: args.temperature })
   });
+  if (!resp.ok) {
+    let errText: string;
+    try {
+      const errData = await resp.json();
+      errText = errData?.error?.message || JSON.stringify(errData);
+    } catch {
+      errText = await resp.text();
+    }
+    throw new Error(`Groq API error ${resp.status}: ${errText}`);
+  }
   const data = await resp.json();
   const content = data.choices?.[0]?.message?.content || '';
   const inTok = data.usage?.prompt_tokens ?? 0;
