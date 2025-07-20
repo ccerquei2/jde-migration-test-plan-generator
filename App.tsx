@@ -4,7 +4,7 @@ import { FileUploader } from './components/FileUploader';
 import { ReportDisplay } from './components/ReportDisplay';
 import { AnalysisInfo } from './components/AnalysisInfo';
 import { generateTestPlan, FunctionalSpec } from './services/geminiService';
-import { PROVIDER_MODELS, unlockTopModel } from './lib/llmClient';
+import { PROVIDER_MODELS, RESTRICTED_MODELS, unlockTopModel } from './lib/llmClient';
 import { GeminiIcon, SparklesIcon } from './components/Icons';
 import { MultiFileUploader } from './components/MultiFileUploader';
 import mammoth from 'mammoth';
@@ -60,6 +60,21 @@ const App: React.FC = () => {
   const [module, setModule] = useState<string>('Manufatura');
   const [llmProvider, setLlmProvider] = useState<string>(initialProvider);
   const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider][0]);
+
+  const handleModelChange = useCallback((model: string) => {
+    if ((RESTRICTED_MODELS as readonly string[]).includes(model)) {
+      const pwd = window.prompt('Digite a senha para usar este modelo (ddmmaa):');
+      if (!pwd) return;
+      try {
+        unlockTopModel(pwd);
+      } catch {
+        setError('Senha incorreta.');
+        return;
+      }
+    }
+    setError('');
+    setLlmModel(model);
+  }, [llmProvider]);
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
@@ -295,7 +310,7 @@ const App: React.FC = () => {
                     <select
                         id="model-select"
                         value={llmModel}
-                        onChange={(e) => setLlmModel(e.target.value)}
+                        onChange={(e) => handleModelChange(e.target.value)}
                         className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
                     >
                         {(PROVIDER_MODELS[llmProvider] || PROVIDER_MODELS.openai).map(m => (
