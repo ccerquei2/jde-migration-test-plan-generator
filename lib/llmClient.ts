@@ -49,7 +49,8 @@ export function unlockTopModel(pwd: string) {
 }
 
 export async function generateChat(args: ChatArgs): Promise<ChatResponse> {
-  const provider = args.provider || process.env.LLM_PROVIDER || 'openai';
+  const envProvider = process.env.LLM_PROVIDER;
+  const provider = (args.provider || (envProvider && envProvider !== 'undefined' ? envProvider : 'openai')).toLowerCase();
   const model = args.model;
   if ((RESTRICTED_MODELS as readonly string[]).includes(model) && !unlocked) {
     throw new Error('401');

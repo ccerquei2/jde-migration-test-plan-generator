@@ -610,7 +610,8 @@ export async function generateTestPlan(
     model: string,
     onProgress: (message: string) => void
 ): Promise<string> {
-    provider = (provider || process.env.LLM_PROVIDER || 'openai').toLowerCase();
+    const envProvider = process.env.LLM_PROVIDER;
+    provider = (provider || (envProvider && envProvider !== 'undefined' ? envProvider : 'openai')).toLowerCase();
     if (provider === 'openai' && !process.env.OPENAI_API_KEY) {
         throw new Error("A variável de ambiente OPENAI_API_KEY não está configurada.");
     }

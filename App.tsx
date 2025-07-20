@@ -54,7 +54,8 @@ const App: React.FC = () => {
   const [includeEnhancedAnalysis, setIncludeEnhancedAnalysis] = useState<boolean>(true);
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
-  const initialProvider = process.env.LLM_PROVIDER || 'openai';
+  const envProvider = process.env.LLM_PROVIDER;
+  const initialProvider = envProvider && envProvider !== 'undefined' ? envProvider : 'openai';
   const [module, setModule] = useState<string>('Manufatura');
   const [llmProvider, setLlmProvider] = useState<string>(initialProvider);
   const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider][0]);
