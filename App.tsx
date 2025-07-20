@@ -4,7 +4,7 @@ import { FileUploader } from './components/FileUploader';
 import { ReportDisplay } from './components/ReportDisplay';
 import { AnalysisInfo } from './components/AnalysisInfo';
 import { generateTestPlan, FunctionalSpec } from './services/geminiService';
-import { PROVIDER_MODELS, unlockTopModel } from './lib/llmClient';
+import { PROVIDER_MODELS, unlockTopModel, RESTRICTED_MODELS } from './lib/llmClient';
 import { GeminiIcon, SparklesIcon } from './components/Icons';
 import { MultiFileUploader } from './components/MultiFileUploader';
 import mammoth from 'mammoth';
@@ -60,6 +60,7 @@ const App: React.FC = () => {
   const [module, setModule] = useState<string>('Manufatura');
   const [llmProvider, setLlmProvider] = useState<string>(initialProvider);
   const [llmModel, setLlmModel] = useState<string>(PROVIDER_MODELS[initialProvider][0]);
+  const [premiumUnlocked, setPremiumUnlocked] = useState<boolean>(false);
 
   const isSpecAnalysis = functionalSpecFiles.length > 0;
   const isCodeAnalysis = customFile !== null;
@@ -82,7 +83,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (process.env.TOP_MODEL_PWD) {
-      try { unlockTopModel(process.env.TOP_MODEL_PWD); } catch {}
+      try {
+        unlockTopModel(process.env.TOP_MODEL_PWD);
+        setPremiumUnlocked(true);
+      } catch {
+        /* ignore invalid pwd */
+      }
     }
   }, []);
 
@@ -112,6 +118,21 @@ const App: React.FC = () => {
     } else {
       setCustomFileContent('');
     }
+  };
+
+  const handleModelChange = (model: string) => {
+    if (RESTRICTED_MODELS.includes(model as any) && !premiumUnlocked) {
+      const pwd = window.prompt('Digite a senha do dia (ddmmaa) para usar modelos premium:');
+      if (!pwd) return;
+      try {
+        unlockTopModel(pwd);
+        setPremiumUnlocked(true);
+      } catch {
+        window.alert('Senha incorreta.');
+        return;
+      }
+    }
+    setLlmModel(model);
   };
   
   const handleFunctionalSpecFilesChange = (files: File[]) => {
@@ -295,7 +316,7 @@ const App: React.FC = () => {
                     <select
                         id="model-select"
                         value={llmModel}
-                        onChange={(e) => setLlmModel(e.target.value)}
+                        onChange={(e) => handleModelChange(e.target.value)}
                         className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
                     >
                         {(PROVIDER_MODELS[llmProvider] || PROVIDER_MODELS.openai).map(m => (
