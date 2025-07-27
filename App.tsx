@@ -4,7 +4,7 @@ import { FileUploader } from './components/FileUploader';
 import { ReportDisplay } from './components/ReportDisplay';
 import { AnalysisInfo } from './components/AnalysisInfo';
 import { generateTestPlan, FunctionalSpec } from './services/geminiService';
-import { PROVIDER_MODELS, unlockTopModel } from './lib/llmClient';
+import { PROVIDER_MODELS, RESTRICTED_MODELS, unlockTopModel } from './lib/llmClient';
 import { GeminiIcon, SparklesIcon } from './components/Icons';
 import { MultiFileUploader } from './components/MultiFileUploader';
 import mammoth from 'mammoth';
@@ -51,6 +51,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [progress, setProgress] = useState<string>('');
+  const [topModelUnlocked, setTopModelUnlocked] = useState<boolean>(false);
   const [includeEnhancedAnalysis, setIncludeEnhancedAnalysis] = useState<boolean>(true);
   const [manufacturingBranch, setManufacturingBranch] = useState<string>('0015');
   const [distributionBranch, setDistributionBranch] = useState<string>('0030');
@@ -82,7 +83,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (process.env.TOP_MODEL_PWD) {
-      try { unlockTopModel(process.env.TOP_MODEL_PWD); } catch {}
+      try { unlockTopModel(process.env.TOP_MODEL_PWD); setTopModelUnlocked(true); } catch {}
     }
   }, []);
 
@@ -138,6 +139,23 @@ const App: React.FC = () => {
       } else {
           setProcessedSpecs([]);
       }
+  };
+
+  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = e.target.value;
+    if ((RESTRICTED_MODELS as readonly string[]).includes(selected) && !topModelUnlocked) {
+      const pwd = window.prompt('Digite a senha para usar modelos premium:');
+      if (pwd === null) return;
+      try {
+        unlockTopModel(pwd);
+        setTopModelUnlocked(true);
+        setError('');
+      } catch {
+        setError('Senha incorreta.');
+        return;
+      }
+    }
+    setLlmModel(selected);
   };
 
   const processSpecFile = (file: File): Promise<FunctionalSpec> => {
@@ -295,7 +313,7 @@ const App: React.FC = () => {
                     <select
                         id="model-select"
                         value={llmModel}
-                        onChange={(e) => setLlmModel(e.target.value)}
+                        onChange={handleModelChange}
                         className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-white"
                     >
                         {(PROVIDER_MODELS[llmProvider] || PROVIDER_MODELS.openai).map(m => (
