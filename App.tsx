@@ -8,6 +8,9 @@ import { PROVIDER_MODELS, RESTRICTED_MODELS, unlockTopModel } from './lib/llmCli
 import { GeminiIcon, SparklesIcon } from './components/Icons';
 import { MultiFileUploader } from './components/MultiFileUploader';
 import mammoth from 'mammoth';
+import { getDocument, GlobalWorkerOptions, OPS } from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; }> = ({ enabled, onChange }) => {
   return (
@@ -133,7 +136,7 @@ const App: React.FC = () => {
               })
               .catch(err => {
                   console.error("Error processing spec files:", err);
-                  setError("Erro ao processar um ou mais arquivos de especificação. Apenas .docx, .txt e .md são suportados.");
+                  setError("Erro ao processar um ou mais arquivos de especificação. Apenas .docx, .txt, .md e .pdf são suportados.");
                   setProgress('');
               });
       } else {
@@ -172,6 +175,101 @@ const App: React.FC = () => {
                       // In a real app we would need a more powerful parser or backend processing.
                       // For now, we pass the HTML content.
                       resolve({ fileName: file.name, htmlContent: result.value, images: [] });
+                  } catch (err) {
+                      reject(err);
+                  }
+              };
+              reader.readAsArrayBuffer(file);
+          } else if (file.name.endsWith('.pdf')) {
+              reader.onload = async (e) => {
+                  try {
+                      const arrayBuffer = e.target?.result as ArrayBuffer;
+                      const pdf = await getDocument({ data: arrayBuffer }).promise;
+                      let htmlContent = '';
+                      const images: { mimeType: string, data: string }[] = [];
+
+                      const buildHtmlFromText = (textContent: any): string => {
+                          const rowsMap = new Map<number, any[]>();
+                          textContent.items.forEach((item: any) => {
+                              const y = Math.round(item.transform[5]);
+                              const row = rowsMap.get(y) || [];
+                              row.push(item);
+                              rowsMap.set(y, row);
+                          });
+                          const sortedY = Array.from(rowsMap.keys()).sort((a, b) => b - a);
+                          const rows = sortedY.map(y =>
+                              (rowsMap.get(y) || []).sort((a, b) => a.transform[4] - b.transform[4])
+                          );
+
+                          let html = '';
+                          let currentTable: string[][] = [];
+
+                          const flushTable = () => {
+                              if (currentTable.length === 0) return;
+                              html += '<table>' +
+                                  currentTable.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') +
+                                  '</table>';
+                              currentTable = [];
+                          };
+
+                          rows.forEach(rowItems => {
+                              const cells: string[] = [];
+                              let cellText = '';
+                              let prevX: number | null = null;
+                              rowItems.forEach((it: any) => {
+                                  const x = it.transform[4];
+                                  const w = it.width || 0;
+                                  const text = it.str;
+                                  if (prevX !== null && x - prevX > 10) {
+                                      cells.push(cellText.trim());
+                                      cellText = text;
+                                  } else {
+                                      cellText += text;
+                                  }
+                                  prevX = x + w;
+                              });
+                              if (cellText.trim() !== '') cells.push(cellText.trim());
+
+                              if (cells.length > 1) {
+                                  if (currentTable.length === 0 || cells.length === currentTable[0].length) {
+                                      currentTable.push(cells);
+                                  } else {
+                                      flushTable();
+                                      html += cells.join(' ') + '<br/>';
+                                  }
+                              } else {
+                                  flushTable();
+                                  html += (cells[0] || '') + '<br/>';
+                              }
+                          });
+                          flushTable();
+                          return html;
+                      };
+
+                      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                          const page = await pdf.getPage(pageNum);
+                          const textContent = await page.getTextContent();
+                          htmlContent += buildHtmlFromText(textContent);
+
+                          const opList = await page.getOperatorList();
+                          for (let i = 0; i < opList.fnArray.length; i++) {
+                              const fnId = opList.fnArray[i];
+                              if (fnId === OPS.paintImageXObject || fnId === OPS.paintJpegXObject || fnId === OPS.paintInlineImageXObject) {
+                                  const args = opList.argsArray[i];
+                                  const objId = args[0];
+                                  const img = await new Promise<any>(resolve => page.objs.get(objId, resolve));
+                                  const canvas = document.createElement('canvas');
+                                  canvas.width = img.width;
+                                  canvas.height = img.height;
+                                  const ctx = canvas.getContext('2d');
+                                  ctx?.drawImage(img, 0, 0);
+                                  const dataUrl = canvas.toDataURL('image/png');
+                                  images.push({ mimeType: 'image/png', data: dataUrl.split(',')[1] });
+                              }
+                          }
+                      }
+
+                      resolve({ fileName: file.name, htmlContent, images });
                   } catch (err) {
                       reject(err);
                   }
@@ -275,7 +373,7 @@ const App: React.FC = () => {
                     title="Carregar Definição(ões) Funcional(is)"
                     files={functionalSpecFiles}
                     onFilesChange={handleFunctionalSpecFilesChange}
-                    accept=".txt,.md,.docx"
+                    accept=".txt,.md,.docx,.pdf"
                     disabled={isCodeAnalysis}
                 />
             </div>

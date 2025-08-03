@@ -71,7 +71,7 @@ export const MultiFileUploader: React.FC<MultiFileUploaderProps> = ({ title, fil
             Arraste arquivos ou <span className="text-blue-600 underline">procure</span>
           </span>
         </span>
-         <span className="text-xs text-slate-500 mt-1">Suporta .docx, .txt, .md</span>
+        <span className="text-xs text-slate-500 mt-1">Suporta .docx, .txt, .md, .pdf</span>
         <input
           ref={inputRef}
           type="file"
