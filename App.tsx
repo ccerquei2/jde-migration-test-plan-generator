@@ -133,7 +133,7 @@ const App: React.FC = () => {
               })
               .catch(err => {
                   console.error("Error processing spec files:", err);
-                  setError("Erro ao processar um ou mais arquivos de especificação. Apenas .docx, .txt e .md são suportados.");
+                  setError("Erro ao processar um ou mais arquivos de especificação. Apenas .docx, .txt, .md e .pdf são suportados.");
                   setProgress('');
               });
       } else {
@@ -162,12 +162,39 @@ const App: React.FC = () => {
       return new Promise(async (resolve, reject) => {
           const reader = new FileReader();
           
-          if (file.name.endsWith('.docx')) {
+          if (file.name.endsWith('.pdf')) {
+              reader.onload = async (e) => {
+                  try {
+                      const arrayBuffer = e.target?.result as ArrayBuffer;
+                      const pdfjsLib: any = await import('pdfjs-dist');
+                      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+                      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                      let text = '';
+                      const images: { mimeType: string, data: string }[] = [];
+                      const canvas = document.createElement('canvas');
+                      const ctx = canvas.getContext('2d');
+                      for (let i = 1; i <= pdf.numPages; i++) {
+                          const page = await pdf.getPage(i);
+                          const txt = await page.getTextContent();
+                          text += txt.items.map((item: any) => item.str).join(' ') + '\n';
+                          const viewport = page.getViewport({ scale: 1.5 });
+                          canvas.width = viewport.width;
+                          canvas.height = viewport.height;
+                          await page.render({ canvasContext: ctx!, viewport }).promise;
+                          images.push({ mimeType: 'image/png', data: canvas.toDataURL('image/png').split(',')[1] });
+                      }
+                      const htmlContent = text.replace(/\n/g, '<br/>');
+                      resolve({ fileName: file.name, htmlContent, images });
+                  } catch (err) {
+                      reject(err);
+                  }
+              };
+              reader.readAsArrayBuffer(file);
+          } else if (file.name.endsWith('.docx')) {
               reader.onload = async (e) => {
                   try {
                       const arrayBuffer = e.target?.result as ArrayBuffer;
                       const result = await mammoth.convertToHtml({ arrayBuffer });
-                      const images: { mimeType: string, data: string }[] = [];
                       // Mammoth does not directly give base64 images, this is a limitation
                       // In a real app we would need a more powerful parser or backend processing.
                       // For now, we pass the HTML content.
@@ -275,7 +302,7 @@ const App: React.FC = () => {
                     title="Carregar Definição(ões) Funcional(is)"
                     files={functionalSpecFiles}
                     onFilesChange={handleFunctionalSpecFilesChange}
-                    accept=".txt,.md,.docx"
+                    accept=".txt,.md,.docx,.pdf"
                     disabled={isCodeAnalysis}
                 />
             </div>
