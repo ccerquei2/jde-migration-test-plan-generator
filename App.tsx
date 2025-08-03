@@ -258,12 +258,20 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-100 font-sans">
       <main className="container mx-auto px-4 py-8">
         <header className="text-center mb-10">
+          <img
+            src="https://i.postimg.cc/PrF15RsV/Logo-Granado-Verde.png"
+            alt="Logo Granado Phebo"
+            className="mx-auto mb-4 w-40 h-auto"
+          />
           <div className="flex items-center justify-center gap-4">
              <GeminiIcon className="w-12 h-12 text-blue-600" />
             <h1 className="text-4xl font-bold text-slate-800">Gerador de Plano de Testes</h1>
           </div>
           <p className="text-lg text-slate-600 mt-2">
             Acelere a geração de Planos de Testes através das Especificações Funcionais ou do Código-Fonte
+          </p>
+          <p className="text-md text-slate-500 mt-1">
+            Direitos Reservados à <span className="font-semibold">Granado Phebo 2025.</span>
           </p>
         </header>
 
