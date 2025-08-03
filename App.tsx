@@ -271,7 +271,7 @@ const App: React.FC = () => {
             Acelere a geração de Planos de Testes através das Especificações Funcionais ou do Código-Fonte
           </p>
           <p className="text-md text-slate-500 mt-1">
-            Personalizado para <span className="font-semibold">Granado Phebo</span>
+            Direitos Reservados à <span className="font-semibold">Granado Phebo 2025.</span>
           </p>
         </header>
 
