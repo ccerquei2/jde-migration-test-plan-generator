@@ -133,7 +133,7 @@ const App: React.FC = () => {
               })
               .catch(err => {
                   console.error("Error processing spec files:", err);
-                  setError("Erro ao processar um ou mais arquivos de especificação. Apenas .docx, .txt e .md são suportados.");
+                  setError("Erro ao processar um ou mais arquivos de especificação. Apenas .docx, .pdf, .txt e .md são suportados.");
                   setProgress('');
               });
       } else {
@@ -162,7 +162,36 @@ const App: React.FC = () => {
       return new Promise(async (resolve, reject) => {
           const reader = new FileReader();
           
-          if (file.name.endsWith('.docx')) {
+          if (file.name.endsWith('.pdf')) {
+              reader.onload = async (e) => {
+                  try {
+                      const arrayBuffer = e.target?.result as ArrayBuffer;
+                      const pdfjsLib = await import('pdfjs-dist/build/pdf');
+                      const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker?url');
+                      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
+                      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                      let textContent = '';
+                      const images: { mimeType: string, data: string }[] = [];
+                      for (let i = 1; i <= pdf.numPages; i++) {
+                          const page = await pdf.getPage(i);
+                          const text = await page.getTextContent();
+                          textContent += text.items.map((item: any) => ('str' in item ? item.str : '')).join(' ') + '\n';
+                          const viewport = page.getViewport({ scale: 1.5 });
+                          const canvas = document.createElement('canvas');
+                          const context = canvas.getContext('2d');
+                          canvas.height = viewport.height;
+                          canvas.width = viewport.width;
+                          await page.render({ canvasContext: context!, viewport }).promise;
+                          images.push({ mimeType: 'image/png', data: canvas.toDataURL('image/png') });
+                      }
+                      const htmlContent = textContent.replace(/\n/g, '<br/>');
+                      resolve({ fileName: file.name, htmlContent, images });
+                  } catch (err) {
+                      reject(err);
+                  }
+              };
+              reader.readAsArrayBuffer(file);
+          } else if (file.name.endsWith('.docx')) {
               reader.onload = async (e) => {
                   try {
                       const arrayBuffer = e.target?.result as ArrayBuffer;
@@ -275,7 +304,7 @@ const App: React.FC = () => {
                     title="Carregar Definição(ões) Funcional(is)"
                     files={functionalSpecFiles}
                     onFilesChange={handleFunctionalSpecFilesChange}
-                    accept=".txt,.md,.docx"
+                    accept=".txt,.md,.docx,.pdf"
                     disabled={isCodeAnalysis}
                 />
             </div>
